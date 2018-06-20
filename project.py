@@ -8,7 +8,6 @@ import json
 from oauth2client.client import flow_from_clientsecrets
 from oauth2client.client import FlowExchangeError
 from flask import make_response
-from functools import wraps
 import httplib2
 import requests
 
@@ -31,6 +30,7 @@ def showlogin():
     login_session['state'] = state
     return render_template('login.html', STATE=state)
 
+# Connect with google
 @app.route('/gconnect', methods=['POST'])
 def gconnect():
     # Validate state token
@@ -150,7 +150,7 @@ def gdisconnect():
         return response
     # execute HTTP GET request to revoke current token
     access_token = credentials.access_token
-    url = 'https://accounts.google.com/o/oauth2/revoke?token=%s' % access_token  # noqa
+    url = 'https://accounts.google.com/o/oauth2/revoke?token=%s' % access_token
     h = httplib2.Http()
     result = h.request(url, 'GET')[0]
 
@@ -223,14 +223,14 @@ def modelsJSON():
 
 @app.route('/model/<string:car_name>/category/JSON')
 def carmodelJSON(car_name):
-    model = session.query(carmodel).filter_by(id=car_name).one_or_none()
+    model = session.query(carmodel).filter_by(id=car_name).one()
     category = session.query(modelcategory).filter_by(
            car_name=car_name).all()
     return jsonify(modelcategory=[i.serialize for i in category])
   
 @app.route('/model/<string:car_name>/category/<string:car_model>/JSON')
 def modelcategoryJSON(car_name, car_model):
-    model_category = session.query(modelcategory).filter_by(id=car_model).one_or_none()
+    model_category = session.query(modelcategory).filter_by(id=car_model).one()
     return jsonify(model_category=model_category.serialize)
     
 # Crud and routing
@@ -240,7 +240,7 @@ def modelcategoryJSON(car_name, car_model):
 @app.route('/')
 @app.route('/model')
 def showmodel():
-    models = session.query(carmodel).all()
+    models = session.query(carmodel).order_by(asc(carmodel.name))
     if 'username' not in login_session:
         return render_template('publicmodel.html', models=models)
     else:
@@ -265,90 +265,93 @@ def newmodel():
 def editmodel(car_name):
     if 'username' not in login_session:
         return redirect('/login')
-    editmodel = session.query(carmodel).filter_by(id=car_name).one_or_none()
+    editedmodel = session.query(carmodel).filter_by(id=car_name).first()
     if request.method == 'POST':
         if request.form['name']:
-            editmodel.name = request.form['name']
-            flash('car model has been edited %s' % editmodel.name)
+            editedmodel.name = request.form['name']
+            flash('car model has been edited %s' % editedmodel.name)
             return redirect(url_for('showmodel'))
     else:
-        return render_template('editmodel.html', model=editmodel)
+        return render_template('editmodel.html', model=editedmodel)
 
 # delete car model
 @app.route('/model/<string:car_name>/delete', methods=['GET', 'POST'])
 def deletemodel(car_name):
-    deletemodel = session.query(carmodel).filter_by(id=car_name).one_or_none()
+    modeltodelete = session.query(carmodel).filter_by(id=car_name).first()
     if 'username' not in login_session:
         return redirect('/login')
     if request.method == 'POST':
-        session.delete(deletemodel)
+        session.delete(modeltodelete)
         session.commit()
-        flash('%s Successfully Deleted' % deletemodel.name)
+        flash('%s Successfully Deleted' % modeltodelete.name)
         return redirect(url_for('showmodel', car_name=car_name))
     else:
-        return render_template('deletemodel.html', model=deletemodel)
+        return render_template('deletemodel.html', model=modeltodelete)
 
 
 # show category of the car models
 @app.route('/model/<string:car_name>/model/<string:car_model>/category')
-def showclass(car_name, car_model):
-    model = session.query(carmodel).filter_by(id=car_name).one_or_none()
+def showcategory(car_name, car_model):
+    model = session.query(carmodel).filter_by(id=car_name).first()
     category = session.query(modelcategory).filter_by(car_name=car_name).all()
-    return render_template('category.html', category=category, model=model)
+    if 'username' not in login_session:
+        return render_template('publiccategory', category=category, model=model)
+    else:
+        return render_template('category.html', category=category, model=model)
 
 
 # add new car model category
 @app.route('/model/<string:car_name>/category/new', methods=['GET', 'POST'])
-def addclass(car_name):
+def newcategory(car_name):
     if 'username' not in login_session:
         return redirect('/login')
-    model = session.query(carmodel).filter_by(id=car_name).one_or_none()
+    model = session.query(carmodel).filter_by(id=car_name).first()
     if request.method == 'POST':
         newcategory = modelcategory(name=request.form['name'], description=request.form['description'],
         classification=request.form['classification'], car_name=car_name)
         session.add(newcategory)
         session.commit()
         flash('New category %s successfully added' % (newcategory.name))
-        return redirect(url_for('showmdodelcategory', car_name=car_name))
+        return redirect(url_for('showcategory', car_name=car_name))
     else:
         return render_template('newcategory.html',car_name=car_name)
 
 # edit car model category
 @app.route('/model/<string:car_name>/category/<string:car_model>/edit', methods=['GET', 'POST'])
-def editclass(car_name, car_model):
+def editcategory(car_name, car_model):
     if 'username' not in login_session:
         return redirect('/login')
-    editcategory = session.query(modelcategory).filter_by(id=car_model).one_or_none()
-    model = session.query(carmodel).filter_by(id=car_name).one_or_none()
+    editedcategory = session.query(modelcategory).filter_by(id=car_model).first()
+    model = session.query(carmodel).filter_by(id=car_name).first()
     if request.method == 'POST':
         if request.form['name']:
-            editcategory.name = request.form['name']
+            editedcategory.name = request.form['name']
         if request.form['description']:
-            editcategory.description = request.form['description']
+            editedcategory.description = request.form['description']
         if request.form['classification']:
-            editcategory.classification = request.form['classification']
-            session.add(editcategory)
-            session.commit()
-            flash('Category successfully edited')
-            return redirect(url_for('showclass', car_name=car_name))
+            editedcategory.classification = request.form['classification']
+        session.add(editedcategory)
+        session.commit()
+        flash('Category successfully edited')
+        return redirect(url_for('showcategory', car_name=car_name))
     else:
-        return render_template('editcategory.html', car_name=car_name, car_model=car_model, category=editcategory)
+        return render_template('editcategory.html', car_name=car_name, car_model=car_model, category=editedcategory)
 
 
 # delete car model-category
 @app.route('/model/<string:car_name>/category/<string:car_model>/delete', methods=['GET', 'POST'])
-def deleteclass(car_name, car_model):
+def deletecategory(car_name, car_model):
     if 'username' not in login_session:
         return redirect('/login')
-    model = session.query(carmodel).filter_by(id=car_name).one_or_none()
-    deletecategory = session.query(modelcategory).filter_by(id=car_model).one_or_none()
+    model = session.query(carmodel).filter_by(id=car_name).first()
+    categorytodelete = session.query(modelcategory).filter_by(id=car_model).first()
     if request.method == 'POST':
-        session.delete(deletecategory)
+        session.delete(categorytodelete)
         session.commit()
         flash('Category has been deleted')
-        return redirect(url_for('showclass', car_name=car_name))
+        return redirect(url_for('showcategory', car_name=car_name))
     else:
-        return render_template('deletecategory.html', category=deletecategory)
+        return render_template('deletecategory.html', category=categorytodelete)
 
 if __name__ == '__main__':
     app.secret_key = 'super_secret_key'
