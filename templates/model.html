@@ -35,14 +35,14 @@
     <div class="col-md-10 padding-none">
         <a href="{{url_for('newmodel')}}">
             <button class="btn btn-default" id="new-model">
-                <span class="" aria-hidden="true"></span><span class="glyphicon glyphicon-plus" aria-hidden="true"></span>
+                <span class="" aria-hidden="true"></span><span class="glyphicon glyphicon-plus" aria-hidden="true"></span> 
             </button>
         </a>
     </div>
     <div class="col-md-1"></div>
 </div>
 {% for model in models %}
-<a href = "{{url_for('showmodel', car_name = model.id)}}">
+<a href = "{{url_for('newcategory', car_name = model.id)}}">
     <div class="row">
         <div class="col-md-1"></div>
         <div class="col-md-10 model-list">
