@@ -1,4 +1,4 @@
-fullstack-nanodegree-vm
+fullstack-nanodegree
 =============
 
 # items-catalog
