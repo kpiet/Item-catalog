@@ -3,7 +3,8 @@ from sqlalchemy import create_engine, asc
 from sqlalchemy.orm import sessionmaker
 from database_setup import Base, carmodel, modelcategory, User
 from flask import session as login_session
-import random, string
+import random
+import string
 import json
 from oauth2client.client import flow_from_clientsecrets
 from oauth2client.client import FlowExchangeError
@@ -39,6 +40,7 @@ def gconnect():
         response.headers['Content-Type'] = 'application/json'
         return response
     code = request.data
+
     try:
         #upgrade authorization code in a credentials object
         oauth_flow = flow_from_clientsecrets('client_secret.json', scope='')
@@ -63,7 +65,7 @@ def gconnect():
     gplus_id = credentials.id_token['sub']
     if result['user_id'] != gplus_id:
         response = make_response(
-        json.dumps("Token's user ID doesn't match given user ID."), 401)
+            json.dumps("Token's user ID doesn't match given user ID."), 401)
         response.headers['Content-Type'] = 'application/json'
         return response
 
@@ -97,6 +99,7 @@ def gconnect():
     login_session['username'] = data['name']
     login_session['picture'] = data['picture']
     login_session['email'] = data['email']
+    login_session['provider'] = 'google'
 
     # See if a user exists and make new one if they don't
     user_id = getUserID(login_session['email'])
@@ -114,29 +117,6 @@ def gconnect():
     flash("you are now logged in as %s" % login_session['username'])
     print "done!"
     return output
-
-# User helper functions
-def createUser(login_session):
-    newUser = User(
-            name=login_session['username'],
-            email=login_session['email'],
-            picture=login_session['picture'])
-    session.add(newUser)
-    session.commit()
-    user = session.query(User).filter_by(email=login_session['email']).one()
-    return user.id
-
-def getUserInfo(user_id):
-    user = session.query(User).filter_by(id=user_id).one()
-    return user
-                                    
-def getUserID(email):
-    try:
-        user = session.query(User).filter_by(email=email).one()
-        return user.id
-    except:
-            return None
-           
 
 # Disconnect - revoke a current user's token
 @app.route('/gdisconnect')
@@ -172,30 +152,29 @@ def gdisconnect():
         response.headers['Content-Type'] = 'application/json'
         return response
 
-
-    # User helper functions
-    def getUserID(email):
-        try:
-            user = session.query(User).filter_by(email=email).one()
-            return user.id
-        except:
-            return None
-
-
-    def getUserInfo(user_id):
-        user = session.query(User).filter_by(id=user_id).one()
-        return user
+# User helper functions
+def getUserID(email):
+    try:
+        user = session.query(User).filter_by(email=email).one()
+        return user.id
+    except:
+        return None
 
 
-    def createUser(login_session):
-        newUser = User(
+def getUserInfo(user_id):
+    user = session.query(User).filter_by(id=user_id).one()
+    return user
+
+
+def createUser(login_session):
+    newUser = User(
             name=login_session['username'],
             email=login_session['email'],
             picture=login_session['picture'])
-        session.add(newUser)
-        session.commit()
-        user = session.query(User).filter_by(email=login_session['email']).one()
-        return user.id
+    session.add(newUser)
+    session.commit()
+    user = session.query(User).filter_by(email=login_session['email']).one()
+    return user.id
 
 
 # Disconnect based on provider
@@ -224,9 +203,9 @@ def modelsJSON():
 @app.route('/model/<string:car_name>/category/JSON')
 def carmodelJSON(car_name):
     model = session.query(carmodel).filter_by(id=car_name).one()
-    category = session.query(modelcategory).filter_by(
+    categories = session.query(modelcategory).filter_by(
            car_name=car_name).all()
-    return jsonify(modelcategory=[i.serialize for i in category])
+    return jsonify(modelcategory=[i.serialize for i in categories])
   
 @app.route('/model/<string:car_name>/category/<string:car_model>/JSON')
 def modelcategoryJSON(car_name, car_model):
@@ -263,13 +242,15 @@ def newmodel():
 # edit car model
 @app.route('/model/<string:car_name>/edit', methods=['GET', 'POST'])
 def editmodel(car_name):
+    editedmodel = session.query(carmodel).filter_by(id=car_name).first()
     if 'username' not in login_session:
         return redirect('/login')
-    editedmodel = session.query(carmodel).filter_by(id=car_name).first()
+    if editedmodel.user_id != login_session['user_id']:
+        return "<script>function myFunction() {alert('Please sign in to edit.');}</script><body onload='myFunction()''>"
     if request.method == 'POST':
         if request.form['name']:
             editedmodel.name = request.form['name']
-            flash('car model has been edited %s' % editedmodel.name)
+            flash('Car model has been edited %s' % editedmodel.name)
             return redirect(url_for('showmodel'))
     else:
         return render_template('editmodel.html', model=editedmodel)
@@ -280,6 +261,8 @@ def deletemodel(car_name):
     modeltodelete = session.query(carmodel).filter_by(id=car_name).first()
     if 'username' not in login_session:
         return redirect('/login')
+    if modeltodelete.user_id != login_session['user_id']:
+        return "<script>function myFunction() {alert('Please sign in to delete.');}</script><body onload='myFunction()''>"
     if request.method == 'POST':
         session.delete(modeltodelete)
         session.commit()
@@ -291,38 +274,44 @@ def deletemodel(car_name):
 
 # show category of the car models
 @app.route('/model/<string:car_name>/model/<string:car_model>/category')
-def showcategory(car_name, car_model):
+def showcategory(car_name):
     model = session.query(carmodel).filter_by(id=car_name).first()
-    category = session.query(modelcategory).filter_by(car_name=car_name).all()
-    if 'username' not in login_session:
-        return render_template('publiccategory', category=category, model=model)
+    creator = getUserInfo(model.user_id)
+    categories = session.query(modelcategory).filter_by(car_name=car_name).all()
+    if 'username' not in login_session or creator.id != login_session['user_id']:
+        return render_template('publiccategory.html', categories=categories, model=model, creator=creator)
     else:
-        return render_template('category.html', category=category, model=model)
+        return render_template('category.html', categories=categories, model=model, creator=creator)
 
 
 # add new car model category
 @app.route('/model/<string:car_name>/category/new', methods=['GET', 'POST'])
-def newcategory(car_name):
+def addcategory(car_name):
+    model = session.query(carmodel).filter_by(id=car_name).first()
     if 'username' not in login_session:
         return redirect('/login')
-    model = session.query(carmodel).filter_by(id=car_name).first()
+    if login_session['user_id'] != model.user_id:
+        return "<script>function myFunction() {alert('You can only add to your own category.');}</script><body onload='myFunction()''>"
     if request.method == 'POST':
-        newcategory = modelcategory(name=request.form['name'], description=request.form['description'],
-        classification=request.form['classification'], car_name=car_name)
+        newcategory = modelcategory(name=request.form['name'],
+        description=request.form['description'],
+        classification=request.form['classification'], car_name=car_name, user_id=model.user_id)
         session.add(newcategory)
         session.commit()
         flash('New category %s successfully added' % (newcategory.name))
         return redirect(url_for('showcategory', car_name=car_name))
     else:
-        return render_template('newcategory.html',car_name=car_name)
+        return render_template('newcategory.html', car_name=car_name)
 
 # edit car model category
 @app.route('/model/<string:car_name>/category/<string:car_model>/edit', methods=['GET', 'POST'])
 def editcategory(car_name, car_model):
+    model = session.query(carmodel).filter_by(id=car_name).first()
+    editedcategory = session.query(modelcategory).filter_by(id=car_model).first()
     if 'username' not in login_session:
         return redirect('/login')
-    editedcategory = session.query(modelcategory).filter_by(id=car_model).first()
-    model = session.query(carmodel).filter_by(id=car_name).first()
+    if login_session['user_id'] != model.user_id:
+        return "<script>function myFunction() {alert('You can only edit your own category.');}</script><body onload='myFunction()''>"
     if request.method == 'POST':
         if request.form['name']:
             editedcategory.name = request.form['name']
@@ -345,6 +334,8 @@ def deletecategory(car_name, car_model):
         return redirect('/login')
     model = session.query(carmodel).filter_by(id=car_name).first()
     categorytodelete = session.query(modelcategory).filter_by(id=car_model).first()
+    if login_session['user_id'] != model.user_id:
+        return "<script>function myFunction() {alert('You can only delete your own category.');}</script><body onload='myFunction()''>"
     if request.method == 'POST':
         session.delete(categorytodelete)
         session.commit()
