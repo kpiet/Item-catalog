@@ -1,55 +1,64 @@
 {% extends "main.html" %}
 {% block content %}
 {% include "header.html" %}
-<div class="row top-menu">
-    <div class="col-md-10"></div>
-    <div class="col-md-2 text-right">
-    </div>
-</div>
-<div class="row divider blue">
-    <div class="col-md-12"></div>
-</div>
-<div class="row banner main">
-    <div class="col-md-1"></div>
-    <div class="col-md-11 padding-none">
-        <h1>Lamborghini</h1>
-    </div>
-</div>
+	<div class="row top-menu">
+		<div class="col-md-10"></div>
+		<div class="col-md-2 text-right">
+					</div>
+	</div>
+	<div class="row divider blue">
+		<div class="col-md-12"></div>
+	</div>
+	<div class="row banner main">
+		<div class="col-md-1"></div>
+		<div class="col-md-11 padding-none">
+			<h1>Lamborghini</h1>
+		</div>
+	</div>
 
 <div class = 'flash'>
-    {% with messages = get_flashed_messages() %}
+        {% with messages = get_flashed_messages() %}
     {% if messages %}
-    
-    <ul>
+          
+        <ul>
         {% for message in messages %}
-        <li> <strong> {{ message }} </strong> </li>
+            <li> <strong> {{ message }} </strong> </li>
         {% endfor %}
-    </ul>
-    {% endif %}
+        </ul>
+        {% endif %}
     {% endwith %}
-    
-</div>
 
-<div class="row padding-top padding-bottom">
-    <div class="col-md-1"></div>
-    <div class="col-md-10 padding-none">
-        <a href="{{url_for('newmodel')}}">
-            <button class="btn btn-default" id="new-model">
-                <span class="" aria-hidden="true"></span><span class="glyphicon glyphicon-plus" aria-hidden="true"></span> 
-            </button>
-        </a>
-    </div>
-    <div class="col-md-1"></div>
+
+
 </div>
-{% for model in models %}
-<a href = "{{url_for('newcategory', car_name = model.id)}}">
-    <div class="row">
-        <div class="col-md-1"></div>
-        <div class="col-md-10 model-list">
-            <h3>{{model.name}}</h3>
-        </div>
-        <div class="col-md-1"></div>
-    </div>
-</a>
-{% endfor %}
+	
+	<div class="row padding-top padding-bottom">
+		<div class="col-md-1"></div>
+		<div class="col-md-10 padding-none">
+			<a href="{{url_for('newmodel')}}">
+				<button class="btn btn-default" id="new-model">
+					<span class="glyphicon glyphicon-plus" aria-hidden="true"></span>
+				</button>
+			</a>
+		</div>
+		<div class="col-md-1"></div>
+	</div>
+	{% for model in models %}
+    <a href = "{{url_for('showcategory', car_name = model.id, car_model=model.id)}}">
+			<div class="row">
+				<div class="col-md-1"></div>
+					<div class="col-md-10 model-list">
+						<h3>{{model.name}}</h3>
+					</div>
+				<div class="col-md-1"></div>
+			</div>
+		</a>
+	{% endfor %}
+
+
+
+
+
+
 {% endblock %}
+

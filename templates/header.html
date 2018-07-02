@@ -1,25 +1,17 @@
-        
-<ul>
-    <li><a href="{{url_for('showmodel')}}">Home</a></li>
-    <li><a href="#">Models</a></li>
-    <li><a href="#">Brand</a></li>
-    <li><a href="#">Contact</a></li>
-    <li><a href="{{url_for('showlogin')}}">Login</a></li>
-    <div class="col-md-6 text-right">
-					<input type="button" value="Login" style="float: right;">
+<div class="row top-menu">
+	<div class="col-md-6">
+		<a href="{{url_for('showmodel')}}">Home</a>
+        <a href="#">Models</a>
+        <a href="#">Brand</a>
+        <a href="#">Contact</a>
 	</div>
-</ul>
-
 	<div class="col-md-6 text-right">
-									{%if 'username' not in session %}
-					<a href="{{url_for('showlogin')}}">Click Here to Login </a>
-					{% else %}
-					<a href="{{url_for('disconnect')}}">Logout </a>
-					{% endif %}
+        {%if 'username' not in session %}
+            <a href="{{url_for('showlogin')}}">Login</a>
+        {% else %}
+            <a href="{{url_for('disconnect')}}">Logout </a>
+        {% endif %}
 				
 	</div>
+</div>				
 
-			<!--<span class="glyphicon glyphicon-plus" aria-hidden="true"></span>Show car model
-		</a>
-	</div>-->
-	

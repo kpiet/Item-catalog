@@ -1,10 +1,10 @@
-{% extends "main.html"%}
+{% extends "main.html" %}
 {% block content %}
-{% include "header.html" %}
+
 	<div class="row top-menu">
 		<div class="col-md-10"></div>
 		<div class="col-md-2 text-right">
-			<a href="{{url_for('showlogin')}}">Click Here to Log in </a>
+			<a href="{{url_for('showlogin')}}">Login </a>
 		</div>
 	</div>
 	<div class="row divider blue">
@@ -13,7 +13,7 @@
 	<div class="row banner main">
 		<div class="col-md-1"></div>
 		<div class="col-md-11 padding-none">
-			<h1>Models</h1>
+			<h1>Lamborghini</h1>
 		</div>
 	</div>
 
@@ -41,10 +41,10 @@
 		<div class="col-md-1"></div>
 	</div>
 	{% for model in models %}
-		<a href = '{{url_for('newcategory', car_name=model.id )}}'>
+		<a href = "{{url_for('showcategory', car_name = model.id, car_model=car_model)}}">
 			<div class="row">
 				<div class="col-md-1"></div>
-					<div class="col-md-10 restaurant-list">
+					<div class="col-md-10 models-list">
 						<h3>{{model.name}}</h3>
 					</div>
 				<div class="col-md-1"></div>
